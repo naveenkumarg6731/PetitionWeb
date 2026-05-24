@@ -1,4 +1,4 @@
-import { useMemo, useRef, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import SignatureCanvas from 'react-signature-canvas'
 import { AnimatePresence, motion } from 'framer-motion'
 import { submitSupporter } from '../services/petitionService'
@@ -31,6 +31,21 @@ function SignatureModal({ open, onClose, supporters, onSuccess }) {
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
   const [signaturePreview, setSignaturePreview] = useState('')
+
+  useEffect(() => {
+    if (!open) {
+      return undefined
+    }
+
+    const handleEscape = (event) => {
+      if (event.key === 'Escape') {
+        onClose()
+      }
+    }
+
+    window.addEventListener('keydown', handleEscape)
+    return () => window.removeEventListener('keydown', handleEscape)
+  }, [open, onClose])
 
   const existingMobiles = useMemo(
     () => new Set(supporters.map((item) => item.mobile).filter(Boolean)),
@@ -124,15 +139,16 @@ function SignatureModal({ open, onClose, supporters, onSuccess }) {
       })
 
       localStorage.setItem('petition_last_submit', String(now))
-      onSuccess(newSupporter)
+      onSuccess?.(newSupporter)
       setFirstName('')
       setLastName('')
       setMobile('')
       setDistrict(districts[0])
       setMessage('')
       setOtp('')
+      setError('')
       clearSignature()
-      onClose()
+      onClose?.()
     } catch (submitError) {
       setError(submitError.message || 'Submission failed. Please retry.')
     } finally {
@@ -147,12 +163,14 @@ function SignatureModal({ open, onClose, supporters, onSuccess }) {
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           exit={{ opacity: 0 }}
+          onClick={() => onClose?.()}
           className="fixed inset-0 z-50 grid place-items-center bg-black/70 p-3"
         >
           <motion.div
             initial={{ scale: 0.95, opacity: 0, y: 20 }}
             animate={{ scale: 1, opacity: 1, y: 0 }}
             exit={{ scale: 0.95, opacity: 0 }}
+            onClick={(event) => event.stopPropagation()}
             className="w-full max-w-2xl rounded-2xl border border-red-300/40 bg-white p-4 shadow-2xl sm:p-6"
           >
             <div className="mb-4 flex items-start justify-between gap-3">

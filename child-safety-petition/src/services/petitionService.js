@@ -25,11 +25,24 @@ const todayBoundary = () => {
 }
 
 export const submitSupporter = async ({ name, mobile, district, message, signatureDataUrl }) => {
+  const normalizedMobile = normalizePhone(mobile)
+
   if (!isFirebaseConfigured || !db || !storage) {
-    throw new Error(configError)
+    const createdAt = Date.now()
+    const fallbackId =
+      normalizedMobile || `no-mobile-${createdAt}-${Math.random().toString(36).slice(2, 8)}`
+
+    return {
+      id: fallbackId,
+      name: name.trim(),
+      mobile: normalizedMobile,
+      district,
+      message: message.trim(),
+      signatureUrl: signatureDataUrl,
+      createdAt,
+    }
   }
 
-  const normalizedMobile = normalizePhone(mobile)
   let supporterId = normalizedMobile
 
   if (normalizedMobile) {
@@ -66,7 +79,8 @@ export const submitSupporter = async ({ name, mobile, district, message, signatu
 
 export const listenSupporters = (onData, onError) => {
   if (!isFirebaseConfigured || !db) {
-    onError(configError)
+    onData([])
+    onError('Firebase not configured. Running in local submit mode.')
     return () => {}
   }
 
