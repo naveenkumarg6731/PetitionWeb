@@ -1,0 +1,48 @@
+@import url('https://fonts.googleapis.com/css2?family=Noto+Sans+Tamil:wght@400;500;600;700;800&family=Manrope:wght@400;500;700;800&display=swap');
+@import 'tailwindcss';
+
+:root {
+  font-family: 'Noto Sans Tamil', 'Manrope', sans-serif;
+  line-height: 1.5;
+  font-weight: 400;
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body,
+#root {
+  min-height: 100%;
+}
+
+body {
+  margin: 0;
+}
+
+.signature-canvas {
+  width: 100%;
+  height: 220px;
+  border-radius: 0.75rem;
+  border: 1px solid rgb(220 38 38 / 0.25);
+  background: #fff;
+}
+
+.loading-pulse {
+  animation: pulse-soft 1.6s ease-in-out infinite;
+}
+
+@keyframes pulse-soft {
+  0%,
+  100% {
+    opacity: 0.45;
+  }
+
+  50% {
+    opacity: 0.95;
+  }
+}
