@@ -34,7 +34,7 @@ function SocialShareButtons() {
           href={item.href}
           target="_blank"
           rel="noreferrer"
-          className="rounded-lg border border-red-300/60 bg-white/15 px-3 py-1.5 text-xs font-semibold text-white transition hover:bg-white/30"
+          className="rounded-lg border border-red-200 bg-red-50 px-3 py-1.5 text-xs font-semibold text-red-900 transition hover:bg-red-100"
         >
           {item.label}
         </a>
@@ -42,7 +42,7 @@ function SocialShareButtons() {
       <button
         type="button"
         onClick={copyLink}
-        className="rounded-lg border border-red-300/60 bg-white/15 px-3 py-1.5 text-xs font-semibold text-white transition hover:bg-white/30"
+        className="rounded-lg border border-red-200 bg-red-50 px-3 py-1.5 text-xs font-semibold text-red-900 transition hover:bg-red-100"
       >
         Copy Link
       </button>

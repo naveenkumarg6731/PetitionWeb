@@ -20,7 +20,7 @@ function PublicPetitionPage() {
   const [isLoading, setIsLoading] = useState(true)
   const [loadError, setLoadError] = useState('')
   const [showSignModal, setShowSignModal] = useState(true)
-  const [isDarkMode, setIsDarkMode] = useState(true)
+  const [isDarkMode, setIsDarkMode] = useState(false)
   const [showSuccess, setShowSuccess] = useState(false)
 
   useEffect(() => {
@@ -40,7 +40,7 @@ function PublicPetitionPage() {
   }, [])
 
   useEffect(() => {
-    document.documentElement.classList.toggle('dark', isDarkMode)
+    document.documentElement.classList.toggle('dark', false)
   }, [isDarkMode])
 
   const stats = useMemo(() => computeStats(supporters), [supporters])
@@ -52,7 +52,7 @@ function PublicPetitionPage() {
   }
 
   return (
-    <div className="relative min-h-screen text-white">
+    <div className="relative min-h-screen text-zinc-900">
       <ParticleBackground />
       <TopBanner />
 
@@ -74,10 +74,10 @@ function PublicPetitionPage() {
           initial={{ opacity: 0, y: 20 }}
           whileInView={{ opacity: 1, y: 0 }}
           viewport={{ once: true, amount: 0.2 }}
-          className="rounded-2xl border border-red-300/35 bg-white/10 p-4 backdrop-blur"
+          className="rounded-2xl border border-red-200 bg-white/95 p-4 shadow-sm"
         >
           <div className="flex flex-wrap items-center justify-between gap-3">
-            <h2 className="text-lg font-bold text-amber-200">Share this movement</h2>
+            <h2 className="text-lg font-bold text-red-950">Share this movement</h2>
             <SocialShareButtons />
           </div>
         </motion.section>

@@ -1,6 +1,7 @@
 import { getAdminToken } from './authService'
 
 const API = '/.netlify/functions'
+const LOCAL_CACHE_KEY = 'petition_local_supporters'
 
 export const normalizePhone = (value) => value.replace(/\D/g, '')
 
@@ -25,6 +26,42 @@ const buildLocalSupporter = ({ name, mobile, district, message, signatureDataUrl
   }
 }
 
+const getCachedSupporters = () => {
+  try {
+    const raw = localStorage.getItem(LOCAL_CACHE_KEY)
+    const parsed = raw ? JSON.parse(raw) : []
+    return Array.isArray(parsed) ? parsed : []
+  } catch {
+    return []
+  }
+}
+
+const saveCachedSupporters = (supporters) => {
+  localStorage.setItem(LOCAL_CACHE_KEY, JSON.stringify(supporters))
+}
+
+const addToCache = (supporter) => {
+  const next = [supporter, ...getCachedSupporters()].sort(
+    (a, b) => Number(b.createdAt || 0) - Number(a.createdAt || 0),
+  )
+  saveCachedSupporters(next)
+  return supporter
+}
+
+const removeFromCache = (id) => {
+  const next = getCachedSupporters().filter((item) => item.id !== id)
+  saveCachedSupporters(next)
+}
+
+const isLocalRuntime = () => {
+  if (typeof window === 'undefined') {
+    return false
+  }
+
+  const host = window.location.hostname
+  return host === 'localhost' || host === '127.0.0.1'
+}
+
 const requestJson = async (url, options = {}) => {
   const response = await fetch(url, options)
   const payload = await response.json().catch(() => ({}))
@@ -39,8 +76,19 @@ const requestJson = async (url, options = {}) => {
 export const submitSupporter = async ({ name, mobile, district, message, signatureDataUrl }) => {
   const normalizedMobile = normalizePhone(mobile)
 
+  if (isLocalRuntime()) {
+    const localSupporter = buildLocalSupporter({
+      name,
+      mobile: normalizedMobile,
+      district,
+      message,
+      signatureDataUrl,
+    })
+    return addToCache(localSupporter)
+  }
+
   try {
-    return await requestJson(`${API}/submit-supporter`, {
+    const remoteSupporter = await requestJson(`${API}/submit-supporter`, {
       method: 'POST',
       headers: { 'content-type': 'application/json' },
       body: JSON.stringify({
@@ -51,33 +99,46 @@ export const submitSupporter = async ({ name, mobile, district, message, signatu
         signatureDataUrl,
       }),
     })
+
+    return addToCache(remoteSupporter)
   } catch (error) {
     if (error instanceof Error && error.message.includes('ஏற்கனவே பதிவு')) {
       throw error
     }
 
-    return buildLocalSupporter({
+    const localSupporter = buildLocalSupporter({
       name,
       mobile: normalizedMobile,
       district,
       message,
       signatureDataUrl,
     })
+
+    return addToCache(localSupporter)
   }
 }
 
 export const listenSupporters = (onData, onError) => {
   let disposed = false
 
+  if (isLocalRuntime()) {
+    onData(getCachedSupporters())
+    return () => {
+      disposed = true
+    }
+  }
+
   const fetchSupporters = async () => {
     try {
       const payload = await requestJson(`${API}/supporters`)
+      const list = payload.supporters || []
+      saveCachedSupporters(list)
       if (!disposed) {
-        onData(payload.supporters || [])
+        onData(list)
       }
     } catch {
       if (!disposed) {
-        onData([])
+        onData(getCachedSupporters())
         onError('Netlify backend not reachable. Running in local mode.')
       }
     }
@@ -93,12 +154,22 @@ export const listenSupporters = (onData, onError) => {
 }
 
 export const fetchSupportersByDistrict = async (district) => {
+  if (isLocalRuntime()) {
+    const cache = getCachedSupporters()
+    return district ? cache.filter((item) => item.district === district) : cache
+  }
+
   const query = district ? `?district=${encodeURIComponent(district)}` : ''
   const payload = await requestJson(`${API}/supporters${query}`)
   return payload.supporters || []
 }
 
 export const deleteSupporter = async (id) => {
+  if (isLocalRuntime()) {
+    removeFromCache(id)
+    return
+  }
+
   const token = getAdminToken()
 
   if (!token) {
@@ -113,6 +184,8 @@ export const deleteSupporter = async (id) => {
     },
     body: JSON.stringify({ id }),
   })
+
+  removeFromCache(id)
 }
 
 export const computeStats = (supporters) => {

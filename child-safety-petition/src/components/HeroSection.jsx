@@ -8,19 +8,19 @@ import {
 
 function HeroSection({ supporterCount, onOpenSign }) {
   return (
-    <section className="grid gap-4 rounded-3xl border border-red-300/35 bg-white/10 p-5 shadow-2xl shadow-black/40 backdrop-blur-xl sm:p-8">
+    <section className="grid gap-4 rounded-3xl border border-red-200 bg-white/95 p-5 shadow-xl shadow-red-200/40 backdrop-blur sm:p-8">
       <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.5 }}
         className="space-y-4"
       >
-        <p className="inline-flex w-fit rounded-full border border-amber-300/40 bg-black/45 px-3 py-1 text-xs font-semibold text-amber-100 sm:text-sm">
+        <p className="inline-flex w-fit rounded-full border border-red-200 bg-red-50 px-3 py-1 text-xs font-semibold text-red-900 sm:text-sm">
           {WEBSITE_SUBTITLE}
         </p>
-        <h1 className="text-3xl font-extrabold leading-tight text-white sm:text-5xl">{WEBSITE_TITLE}</h1>
+        <h1 className="text-3xl font-extrabold leading-tight text-red-950 sm:text-5xl">{WEBSITE_TITLE}</h1>
         <h2 className="text-2xl font-bold text-amber-200 sm:text-3xl">{HERO_HEADLINE}</h2>
-        <p className="max-w-4xl text-sm leading-relaxed text-zinc-100 sm:text-lg">{HERO_DESCRIPTION}</p>
+        <p className="max-w-4xl text-sm leading-relaxed text-zinc-700 sm:text-lg">{HERO_DESCRIPTION}</p>
         <button
           type="button"
           onClick={onOpenSign}
@@ -41,7 +41,7 @@ function HeroSection({ supporterCount, onOpenSign }) {
           <p className="mt-1 text-3xl font-bold sm:text-4xl">{supporterCount.toLocaleString('en-IN')}</p>
         </motion.div>
 
-        <div className="rounded-xl border border-amber-300/50 bg-black/35 px-4 py-3 text-xs text-amber-100">
+        <div className="rounded-xl border border-amber-300 bg-amber-50 px-4 py-3 text-xs text-amber-900">
           This petition is intended to be submitted to Tamil Nadu leadership and police authorities.
         </div>
       </div>
