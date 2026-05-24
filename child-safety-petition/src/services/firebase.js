@@ -1,4 +1,5 @@
 import { initializeApp } from 'firebase/app'
+import { getAuth } from 'firebase/auth'
 import { getFirestore } from 'firebase/firestore'
 import { getStorage } from 'firebase/storage'
 
@@ -15,7 +16,10 @@ export const isFirebaseConfigured = Object.values(firebaseConfig).every(
   (value) => value && !value.includes('YOUR_'),
 )
 
+export const ADMIN_EMAIL = import.meta.env.VITE_ADMIN_EMAIL || ''
+
 const app = isFirebaseConfigured ? initializeApp(firebaseConfig) : null
 
 export const db = app ? getFirestore(app) : null
 export const storage = app ? getStorage(app) : null
+export const auth = app ? getAuth(app) : null

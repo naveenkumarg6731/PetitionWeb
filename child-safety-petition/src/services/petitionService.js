@@ -1,79 +1,120 @@
 import {
   collection,
+  deleteDoc,
   doc,
   getDoc,
+  getDocs,
   onSnapshot,
   orderBy,
   query,
   setDoc,
+  where,
 } from 'firebase/firestore'
-import { getDownloadURL, ref, uploadString } from 'firebase/storage'
+import { deleteObject, getDownloadURL, ref, uploadString } from 'firebase/storage'
 import { db, isFirebaseConfigured, storage } from './firebase'
 
 const SUPPORTERS_COLLECTION = 'supporters'
+const configError = 'Firebase configuration missing. Update .env values to enable submissions.'
 
-const getConfigError =
-  'Firebase configuration missing. Update .env values to enable submissions.'
+export const normalizePhone = (value) => value.replace(/\D/g, '')
 
-const normalizePhone = (value) => value.replace(/\D/g, '')
+const todayBoundary = () => {
+  const now = new Date()
+  now.setHours(0, 0, 0, 0)
+  return now.getTime()
+}
 
-export const submitSupporter = async ({ fullName, phoneNumber, district, signatureDataUrl }) => {
+export const submitSupporter = async ({ name, mobile, district, message, signatureDataUrl }) => {
   if (!isFirebaseConfigured || !db || !storage) {
-    throw new Error(getConfigError)
+    throw new Error(configError)
   }
 
-  const normalizedPhone = normalizePhone(phoneNumber)
-  const supporterDoc = doc(db, SUPPORTERS_COLLECTION, normalizedPhone)
-  const existingDoc = await getDoc(supporterDoc)
+  const normalizedMobile = normalizePhone(mobile)
+  const supporterRef = doc(db, SUPPORTERS_COLLECTION, normalizedMobile)
+  const existing = await getDoc(supporterRef)
 
-  if (existingDoc.exists()) {
-    throw new Error('இந்த மொபைல் எண்ணில் ஏற்கனவே ஆதரவு பதிவு செய்யப்பட்டுள்ளது.')
+  if (existing.exists()) {
+    throw new Error('இந்த மொபைல் எண்ணில் ஏற்கனவே பதிவு உள்ளது.')
   }
 
-  const submittedAt = Date.now()
-  const signatureRef = ref(storage, `signatures/${normalizedPhone}_${submittedAt}.png`)
+  const createdAt = Date.now()
+  const signatureRef = ref(storage, `signatures/${normalizedMobile}_${createdAt}.png`)
 
   await uploadString(signatureRef, signatureDataUrl, 'data_url')
   const signatureUrl = await getDownloadURL(signatureRef)
 
   const payload = {
-    fullName: fullName.trim(),
-    phoneNumber: normalizedPhone,
+    id: normalizedMobile,
+    name: name.trim(),
+    mobile: normalizedMobile,
     district,
+    message: message.trim(),
     signatureUrl,
-    submittedAt,
+    createdAt,
   }
 
-  await setDoc(supporterDoc, payload)
-
-  return {
-    id: normalizedPhone,
-    ...payload,
-  }
+  await setDoc(supporterRef, payload)
+  return payload
 }
 
 export const listenSupporters = (onData, onError) => {
   if (!isFirebaseConfigured || !db) {
-    onError(getConfigError)
+    onError(configError)
     return () => {}
   }
 
   const supportersQuery = query(
     collection(db, SUPPORTERS_COLLECTION),
-    orderBy('submittedAt', 'desc'),
+    orderBy('createdAt', 'desc'),
   )
 
   return onSnapshot(
     supportersQuery,
     (snapshot) => {
-      const data = snapshot.docs.map((supporterDoc) => ({
-        id: supporterDoc.id,
-        ...supporterDoc.data(),
-      }))
-      onData(data)
+      onData(snapshot.docs.map((item) => item.data()))
     },
-    () => {
-      onError('ஆதரவாளர்கள் பட்டியலை பெற முடியவில்லை. பின்னர் மீண்டும் முயற்சிக்கவும்.')
-    },
+    () => onError('ஆதரவாளர்கள் தரவைப் பெற முடியவில்லை. பின்னர் முயற்சிக்கவும்.'),
   )
+}
+
+export const fetchSupportersByDistrict = async (district) => {
+  if (!isFirebaseConfigured || !db) {
+    throw new Error(configError)
+  }
+
+  const supportersRef = collection(db, SUPPORTERS_COLLECTION)
+  const supportersQuery = district
+    ? query(supportersRef, where('district', '==', district), orderBy('createdAt', 'desc'))
+    : query(supportersRef, orderBy('createdAt', 'desc'))
+
+  const snapshot = await getDocs(supportersQuery)
+  return snapshot.docs.map((item) => item.data())
+}
+
+export const deleteSupporter = async (id, signatureUrl) => {
+  if (!isFirebaseConfigured || !db || !storage) {
+    throw new Error(configError)
+  }
+
+  await deleteDoc(doc(db, SUPPORTERS_COLLECTION, id))
+
+  if (signatureUrl) {
+    try {
+      await deleteObject(ref(storage, signatureUrl))
+    } catch {
+      // Signature might have already been removed or URL may be invalid.
+    }
+  }
+}
+
+export const computeStats = (supporters) => {
+  const districts = new Set(supporters.map((item) => item.district).filter(Boolean))
+  const todayStart = todayBoundary()
+  const todaysSupporters = supporters.filter((item) => item.createdAt >= todayStart).length
+
+  return {
+    totalSignatures: supporters.length,
+    districtsParticipated: districts.size,
+    todaysSupporters,
+  }
 }

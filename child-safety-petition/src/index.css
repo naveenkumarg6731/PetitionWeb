@@ -10,6 +10,11 @@
   -moz-osx-font-smoothing: grayscale;
 }
 
+html,
+body {
+  background: #070707;
+}
+
 * {
   box-sizing: border-box;
 }
@@ -34,6 +39,39 @@ body {
 
 .loading-pulse {
   animation: pulse-soft 1.6s ease-in-out infinite;
+}
+
+.ticker {
+  animation: ticker-scroll 28s linear infinite;
+}
+
+.particle {
+  animation-name: float-particle;
+  animation-timing-function: ease-in-out;
+  animation-iteration-count: infinite;
+}
+
+@keyframes ticker-scroll {
+  0% {
+    transform: translateX(0%);
+  }
+
+  100% {
+    transform: translateX(-50%);
+  }
+}
+
+@keyframes float-particle {
+  0%,
+  100% {
+    transform: translateY(0px) scale(1);
+    opacity: 0.25;
+  }
+
+  50% {
+    transform: translateY(-22px) scale(1.35);
+    opacity: 0.8;
+  }
 }
 
 @keyframes pulse-soft {
