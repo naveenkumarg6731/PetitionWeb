@@ -21,7 +21,8 @@ const SUBMIT_COOLDOWN_MS = 90_000
 function SignatureModal({ open, onClose, supporters, onSuccess }) {
   const signatureRef = useRef(null)
   const [activeTab, setActiveTab] = useState('draw')
-  const [name, setName] = useState('')
+  const [firstName, setFirstName] = useState('')
+  const [lastName, setLastName] = useState('')
   const [mobile, setMobile] = useState('')
   const [district, setDistrict] = useState(districts[0])
   const [message, setMessage] = useState('')
@@ -32,7 +33,7 @@ function SignatureModal({ open, onClose, supporters, onSuccess }) {
   const [signaturePreview, setSignaturePreview] = useState('')
 
   const existingMobiles = useMemo(
-    () => new Set(supporters.map((item) => item.mobile)),
+    () => new Set(supporters.map((item) => item.mobile).filter(Boolean)),
     [supporters],
   )
 
@@ -81,18 +82,19 @@ function SignatureModal({ open, onClose, supporters, onSuccess }) {
     setError('')
 
     const normalizedMobile = mobile.replace(/\D/g, '')
+    const fullName = `${firstName.trim()} ${lastName.trim()}`.trim()
 
-    if (name.trim().length < 3) {
-      setError('Valid full name is required.')
+    if (firstName.trim().length < 2 || lastName.trim().length < 1) {
+      setError('First name and last name are required.')
       return
     }
 
-    if (normalizedMobile.length !== 10) {
-      setError('10-digit mobile number is required.')
+    if (normalizedMobile && normalizedMobile.length !== 10) {
+      setError('If mobile is entered, it must be a valid 10-digit number.')
       return
     }
 
-    if (existingMobiles.has(normalizedMobile)) {
+    if (normalizedMobile && existingMobiles.has(normalizedMobile)) {
       setError('இந்த எண்ணில் ஏற்கனவே பதிவு செய்யப்பட்டுள்ளது.')
       return
     }
@@ -114,7 +116,7 @@ function SignatureModal({ open, onClose, supporters, onSuccess }) {
 
     try {
       const newSupporter = await submitSupporter({
-        name,
+        name: fullName,
         mobile: normalizedMobile,
         district,
         message,
@@ -123,7 +125,8 @@ function SignatureModal({ open, onClose, supporters, onSuccess }) {
 
       localStorage.setItem('petition_last_submit', String(now))
       onSuccess(newSupporter)
-      setName('')
+      setFirstName('')
+      setLastName('')
       setMobile('')
       setDistrict(districts[0])
       setMessage('')
@@ -167,25 +170,34 @@ function SignatureModal({ open, onClose, supporters, onSuccess }) {
             </div>
 
             <form onSubmit={handleSubmit} className="grid gap-3">
-              <div className="grid gap-3 sm:grid-cols-2">
+              <div className="grid gap-3 sm:grid-cols-3">
                 <label className="grid gap-1 text-xs font-semibold text-zinc-700">
-                  Full Name *
+                  First Name *
                   <input
-                    value={name}
-                    onChange={(event) => setName(event.target.value)}
-                    placeholder="Full Name"
+                    value={firstName}
+                    onChange={(event) => setFirstName(event.target.value)}
+                    placeholder="First Name"
                     className="rounded-lg border border-red-200 bg-white px-3 py-2 text-sm font-medium text-zinc-900 placeholder:text-zinc-400"
                     required
                   />
                 </label>
                 <label className="grid gap-1 text-xs font-semibold text-zinc-700">
-                  Mobile Number *
+                  Last Name *
+                  <input
+                    value={lastName}
+                    onChange={(event) => setLastName(event.target.value)}
+                    placeholder="Last Name"
+                    className="rounded-lg border border-red-200 bg-white px-3 py-2 text-sm font-medium text-zinc-900 placeholder:text-zinc-400"
+                    required
+                  />
+                </label>
+                <label className="grid gap-1 text-xs font-semibold text-zinc-700">
+                  Mobile Number (Optional)
                   <input
                     value={mobile}
                     onChange={(event) => setMobile(event.target.value)}
                     placeholder="Mobile Number"
                     className="rounded-lg border border-red-200 bg-white px-3 py-2 text-sm font-medium text-zinc-900 placeholder:text-zinc-400"
-                    required
                   />
                 </label>
               </div>

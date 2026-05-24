@@ -30,21 +30,28 @@ export const submitSupporter = async ({ name, mobile, district, message, signatu
   }
 
   const normalizedMobile = normalizePhone(mobile)
-  const supporterRef = doc(db, SUPPORTERS_COLLECTION, normalizedMobile)
-  const existing = await getDoc(supporterRef)
+  let supporterId = normalizedMobile
 
-  if (existing.exists()) {
-    throw new Error('இந்த மொபைல் எண்ணில் ஏற்கனவே பதிவு உள்ளது.')
+  if (normalizedMobile) {
+    const existingRef = doc(db, SUPPORTERS_COLLECTION, normalizedMobile)
+    const existing = await getDoc(existingRef)
+
+    if (existing.exists()) {
+      throw new Error('இந்த மொபைல் எண்ணில் ஏற்கனவே பதிவு உள்ளது.')
+    }
+  } else {
+    supporterId = `no-mobile-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`
   }
 
   const createdAt = Date.now()
-  const signatureRef = ref(storage, `signatures/${normalizedMobile}_${createdAt}.png`)
+  const supporterRef = doc(db, SUPPORTERS_COLLECTION, supporterId)
+  const signatureRef = ref(storage, `signatures/${supporterId}_${createdAt}.png`)
 
   await uploadString(signatureRef, signatureDataUrl, 'data_url')
   const signatureUrl = await getDownloadURL(signatureRef)
 
   const payload = {
-    id: normalizedMobile,
+    id: supporterId,
     name: name.trim(),
     mobile: normalizedMobile,
     district,
