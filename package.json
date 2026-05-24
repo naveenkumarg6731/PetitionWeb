@@ -4,10 +4,10 @@
   "version": "0.0.0",
   "type": "module",
   "scripts": {
-    "dev": "vite",
-    "build": "vite build",
-    "lint": "eslint .",
-    "preview": "vite preview"
+    "dev": "npm --prefix child-safety-petition run dev",
+    "build": "npm --prefix child-safety-petition run build",
+    "lint": "npm --prefix child-safety-petition run lint",
+    "preview": "npm --prefix child-safety-petition run preview"
   },
   "dependencies": {
     "firebase": "^12.13.0",
