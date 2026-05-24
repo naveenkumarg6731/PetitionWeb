@@ -14,7 +14,6 @@ import SocialShareButtons from '../components/ui/SocialShareButtons'
 import SuccessPopup from '../components/ui/SuccessPopup'
 import ThemeToggle from '../components/ui/ThemeToggle'
 import { computeStats, listenSupporters } from '../services/petitionService'
-import { downloadCampaignPdf } from '../utils/reportUtils'
 
 function PublicPetitionPage() {
   const [supporters, setSupporters] = useState([])
@@ -80,13 +79,6 @@ function PublicPetitionPage() {
           <div className="flex flex-wrap items-center justify-between gap-3">
             <h2 className="text-lg font-bold text-amber-200">Share this movement</h2>
             <SocialShareButtons />
-            <button
-              type="button"
-              onClick={() => downloadCampaignPdf({ stats, supporters })}
-              className="rounded-lg bg-red-800 px-3 py-1.5 text-xs font-semibold text-white"
-            >
-              Download Official PDF
-            </button>
           </div>
         </motion.section>
 
