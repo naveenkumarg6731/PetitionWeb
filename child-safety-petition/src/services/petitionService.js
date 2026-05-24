@@ -1,46 +1,8 @@
-import {
-  collection,
-  deleteDoc,
-  doc,
-  getDoc,
-  getDocs,
-  onSnapshot,
-  orderBy,
-  query,
-  setDoc,
-  where,
-} from 'firebase/firestore'
-import { deleteObject, getDownloadURL, ref, uploadString } from 'firebase/storage'
-import { db, isFirebaseConfigured, storage } from './firebase'
+import { getAdminToken } from './authService'
 
-const SUPPORTERS_COLLECTION = 'supporters'
-const configError = 'Firebase configuration missing. Update .env values to enable submissions.'
-const REMOTE_SUBMIT_TIMEOUT_MS = 8000
+const API = '/.netlify/functions'
 
 export const normalizePhone = (value) => value.replace(/\D/g, '')
-
-const buildLocalSupporter = ({ name, mobile, district, message, signatureDataUrl }) => {
-  const createdAt = Date.now()
-  const fallbackId = mobile || `no-mobile-${createdAt}-${Math.random().toString(36).slice(2, 8)}`
-
-  return {
-    id: fallbackId,
-    name: name.trim(),
-    mobile,
-    district,
-    message: message.trim(),
-    signatureUrl: signatureDataUrl,
-    createdAt,
-  }
-}
-
-const withTimeout = (promise, timeoutMs) =>
-  Promise.race([
-    promise,
-    new Promise((_, reject) => {
-      setTimeout(() => reject(new Error('submit-timeout')), timeoutMs)
-    }),
-  ])
 
 const todayBoundary = () => {
   const now = new Date()
@@ -48,56 +10,47 @@ const todayBoundary = () => {
   return now.getTime()
 }
 
+const buildLocalSupporter = ({ name, mobile, district, message, signatureDataUrl }) => {
+  const createdAt = Date.now()
+  const fallbackId = mobile || `no-mobile-${createdAt}-${Math.random().toString(36).slice(2, 8)}`
+
+  return {
+    id: fallbackId,
+    name: String(name || '').trim(),
+    mobile,
+    district,
+    message: String(message || '').trim(),
+    signatureUrl: signatureDataUrl,
+    createdAt,
+  }
+}
+
+const requestJson = async (url, options = {}) => {
+  const response = await fetch(url, options)
+  const payload = await response.json().catch(() => ({}))
+
+  if (!response.ok) {
+    throw new Error(payload.error || 'Request failed')
+  }
+
+  return payload
+}
+
 export const submitSupporter = async ({ name, mobile, district, message, signatureDataUrl }) => {
   const normalizedMobile = normalizePhone(mobile)
 
-  if (!isFirebaseConfigured || !db || !storage) {
-    return buildLocalSupporter({
-      name,
-      mobile: normalizedMobile,
-      district,
-      message,
-      signatureDataUrl,
-    })
-  }
-
   try {
-    const remoteSubmission = async () => {
-    let supporterId = normalizedMobile
-
-    if (normalizedMobile) {
-      const existingRef = doc(db, SUPPORTERS_COLLECTION, normalizedMobile)
-      const existing = await getDoc(existingRef)
-
-      if (existing.exists()) {
-        throw new Error('இந்த மொபைல் எண்ணில் ஏற்கனவே பதிவு உள்ளது.')
-      }
-    } else {
-      supporterId = `no-mobile-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`
-    }
-
-    const createdAt = Date.now()
-    const supporterRef = doc(db, SUPPORTERS_COLLECTION, supporterId)
-    const signatureRef = ref(storage, `signatures/${supporterId}_${createdAt}.png`)
-
-    await uploadString(signatureRef, signatureDataUrl, 'data_url')
-    const signatureUrl = await getDownloadURL(signatureRef)
-
-    const payload = {
-      id: supporterId,
-      name: name.trim(),
-      mobile: normalizedMobile,
-      district,
-      message: message.trim(),
-      signatureUrl,
-      createdAt,
-    }
-
-    await setDoc(supporterRef, payload)
-    return payload
-    }
-
-    return await withTimeout(remoteSubmission(), REMOTE_SUBMIT_TIMEOUT_MS)
+    return await requestJson(`${API}/submit-supporter`, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({
+        name,
+        mobile: normalizedMobile,
+        district,
+        message,
+        signatureDataUrl,
+      }),
+    })
   } catch (error) {
     if (error instanceof Error && error.message.includes('ஏற்கனவே பதிவு')) {
       throw error
@@ -114,60 +67,58 @@ export const submitSupporter = async ({ name, mobile, district, message, signatu
 }
 
 export const listenSupporters = (onData, onError) => {
-  if (!isFirebaseConfigured || !db) {
-    onData([])
-    onError('Firebase not configured. Running in local submit mode.')
-    return () => {}
+  let disposed = false
+
+  const fetchSupporters = async () => {
+    try {
+      const payload = await requestJson(`${API}/supporters`)
+      if (!disposed) {
+        onData(payload.supporters || [])
+      }
+    } catch {
+      if (!disposed) {
+        onData([])
+        onError('Netlify backend not reachable. Running in local mode.')
+      }
+    }
   }
 
-  const supportersQuery = query(
-    collection(db, SUPPORTERS_COLLECTION),
-    orderBy('createdAt', 'desc'),
-  )
+  fetchSupporters()
+  const timer = setInterval(fetchSupporters, 5000)
 
-  return onSnapshot(
-    supportersQuery,
-    (snapshot) => {
-      onData(snapshot.docs.map((item) => item.data()))
-    },
-    () => onError('ஆதரவாளர்கள் தரவைப் பெற முடியவில்லை. பின்னர் முயற்சிக்கவும்.'),
-  )
+  return () => {
+    disposed = true
+    clearInterval(timer)
+  }
 }
 
 export const fetchSupportersByDistrict = async (district) => {
-  if (!isFirebaseConfigured || !db) {
-    throw new Error(configError)
-  }
-
-  const supportersRef = collection(db, SUPPORTERS_COLLECTION)
-  const supportersQuery = district
-    ? query(supportersRef, where('district', '==', district), orderBy('createdAt', 'desc'))
-    : query(supportersRef, orderBy('createdAt', 'desc'))
-
-  const snapshot = await getDocs(supportersQuery)
-  return snapshot.docs.map((item) => item.data())
+  const query = district ? `?district=${encodeURIComponent(district)}` : ''
+  const payload = await requestJson(`${API}/supporters${query}`)
+  return payload.supporters || []
 }
 
-export const deleteSupporter = async (id, signatureUrl) => {
-  if (!isFirebaseConfigured || !db || !storage) {
-    throw new Error(configError)
+export const deleteSupporter = async (id) => {
+  const token = getAdminToken()
+
+  if (!token) {
+    throw new Error('Admin session expired. Please login again.')
   }
 
-  await deleteDoc(doc(db, SUPPORTERS_COLLECTION, id))
-
-  if (signatureUrl) {
-    try {
-      await deleteObject(ref(storage, signatureUrl))
-    } catch {
-      // Signature might have already been removed or URL may be invalid.
-    }
-  }
+  await requestJson(`${API}/delete-supporter`, {
+    method: 'POST',
+    headers: {
+      'content-type': 'application/json',
+      authorization: `Bearer ${token}`,
+    },
+    body: JSON.stringify({ id }),
+  })
 }
 
 export const computeStats = (supporters) => {
   const districts = new Set(supporters.map((item) => item.district).filter(Boolean))
   const todayStart = todayBoundary()
-  const todaysSupporters = supporters.filter((item) => item.createdAt >= todayStart).length
+  const todaysSupporters = supporters.filter((item) => Number(item.createdAt) >= todayStart).length
 
   return {
     totalSignatures: supporters.length,

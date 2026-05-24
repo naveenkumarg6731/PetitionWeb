@@ -1,38 +1,53 @@
-import {
-  onAuthStateChanged,
-  signInWithEmailAndPassword,
-  signOut,
-} from 'firebase/auth'
-import { ADMIN_EMAIL, auth, isFirebaseConfigured } from './firebase'
+const ADMIN_TOKEN_KEY = 'petition_admin_token'
+const ADMIN_USER_KEY = 'petition_admin_user'
 
-const authError = 'Firebase Auth configuration missing. Update .env and enable Email/Password Auth.'
+const parseStoredUser = () => {
+  const token = localStorage.getItem(ADMIN_TOKEN_KEY) || ''
+  const userRaw = localStorage.getItem(ADMIN_USER_KEY)
 
-export const watchAuthState = (onUserChange) => {
-  if (!isFirebaseConfigured || !auth) {
-    onUserChange(null)
-    return () => {}
+  if (!token || !userRaw) {
+    return null
   }
 
-  return onAuthStateChanged(auth, onUserChange)
+  try {
+    const user = JSON.parse(userRaw)
+    return { token, ...user }
+  } catch {
+    return null
+  }
+}
+
+export const getAdminToken = () => localStorage.getItem(ADMIN_TOKEN_KEY) || ''
+
+export const watchAuthState = (onUserChange) => {
+  onUserChange(parseStoredUser())
+
+  const onStorage = () => onUserChange(parseStoredUser())
+  window.addEventListener('storage', onStorage)
+
+  return () => window.removeEventListener('storage', onStorage)
 }
 
 export const adminLogin = async (email, password) => {
-  if (!isFirebaseConfigured || !auth) {
-    throw new Error(authError)
+  const response = await fetch('/.netlify/functions/admin-login', {
+    method: 'POST',
+    headers: { 'content-type': 'application/json' },
+    body: JSON.stringify({ email, password }),
+  })
+
+  const payload = await response.json().catch(() => ({}))
+
+  if (!response.ok) {
+    throw new Error(payload.error || 'Admin login failed')
   }
 
-  if (ADMIN_EMAIL && email.toLowerCase() !== ADMIN_EMAIL.toLowerCase()) {
-    throw new Error('Admin access denied for this email.')
-  }
+  localStorage.setItem(ADMIN_TOKEN_KEY, payload.token)
+  localStorage.setItem(ADMIN_USER_KEY, JSON.stringify(payload.user))
 
-  const credential = await signInWithEmailAndPassword(auth, email, password)
-  return credential.user
+  return payload.user
 }
 
 export const adminLogout = async () => {
-  if (!isFirebaseConfigured || !auth) {
-    return
-  }
-
-  await signOut(auth)
+  localStorage.removeItem(ADMIN_TOKEN_KEY)
+  localStorage.removeItem(ADMIN_USER_KEY)
 }
