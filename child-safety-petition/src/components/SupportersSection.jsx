@@ -6,6 +6,10 @@ const dateFormatter = new Intl.DateTimeFormat('ta-IN', {
 })
 
 function SupportersSection({ supporters, isLoading, loadError }) {
+  const orderedSupporters = [...supporters].sort(
+    (a, b) => Number(a.createdAt || 0) - Number(b.createdAt || 0),
+  )
+
   return (
     <motion.section
       initial={{ opacity: 0, y: 18 }}
@@ -46,9 +50,9 @@ function SupportersSection({ supporters, isLoading, loadError }) {
         </p>
       ) : null}
 
-      {!isLoading && supporters.length > 0 ? (
+      {!isLoading && orderedSupporters.length > 0 ? (
         <div className="grid gap-4 sm:grid-cols-2">
-          {supporters.map((supporter, index) => (
+          {orderedSupporters.map((supporter, index) => (
             <motion.article
               key={supporter.id}
               initial={{ opacity: 0, y: 14 }}
