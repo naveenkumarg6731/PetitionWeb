@@ -9,7 +9,7 @@ function RecentSupportersTicker({ supporters }) {
     .join('  •  ')
 
   return (
-    <div className="overflow-hidden rounded-xl border border-red-300/50 bg-black/40 px-4 py-2 text-xs text-amber-100">
+    <div className="overflow-hidden rounded-xl border border-red-200 bg-red-50 px-4 py-2 text-xs text-red-900">
       <div className="ticker whitespace-nowrap">{`${text}  •  ${text}`}</div>
     </div>
   )

@@ -15,18 +15,29 @@ import SuccessPopup from '../components/ui/SuccessPopup'
 import ThemeToggle from '../components/ui/ThemeToggle'
 import { computeStats, listenSupporters } from '../services/petitionService'
 
+const mergeSupporters = (current, incoming) => {
+  const map = new Map()
+
+  ;[...incoming, ...current].forEach((item) => {
+    if (item?.id) {
+      map.set(item.id, item)
+    }
+  })
+
+  return Array.from(map.values()).sort((a, b) => Number(b.createdAt || 0) - Number(a.createdAt || 0))
+}
+
 function PublicPetitionPage() {
   const [supporters, setSupporters] = useState([])
   const [isLoading, setIsLoading] = useState(true)
   const [loadError, setLoadError] = useState('')
   const [showSignModal, setShowSignModal] = useState(true)
-  const [isDarkMode, setIsDarkMode] = useState(false)
   const [showSuccess, setShowSuccess] = useState(false)
 
   useEffect(() => {
     const unsubscribe = listenSupporters(
       (items) => {
-        setSupporters(items)
+        setSupporters((current) => mergeSupporters(current, items))
         setLoadError('')
         setIsLoading(false)
       },
@@ -40,13 +51,15 @@ function PublicPetitionPage() {
   }, [])
 
   useEffect(() => {
-    document.documentElement.classList.toggle('dark', false)
-  }, [isDarkMode])
+    document.documentElement.classList.remove('dark')
+  }, [])
 
   const stats = useMemo(() => computeStats(supporters), [supporters])
 
   const onSupportSuccess = (newSupporter) => {
-    setSupporters((previous) => [newSupporter, ...previous])
+    setSupporters((previous) => mergeSupporters(previous, [newSupporter]))
+    setIsLoading(false)
+    setLoadError('')
     setShowSuccess(true)
     setTimeout(() => setShowSuccess(false), 2600)
   }
@@ -58,10 +71,7 @@ function PublicPetitionPage() {
 
       <main className="mx-auto flex w-full max-w-6xl flex-col gap-6 px-4 pb-16 pt-6 sm:px-6 lg:px-8">
         <div className="flex justify-end">
-          <ThemeToggle
-            isDarkMode={isDarkMode}
-            onToggle={() => setIsDarkMode((previous) => !previous)}
-          />
+          <ThemeToggle />
         </div>
 
         <HeroSection supporterCount={stats.totalSignatures} onOpenSign={() => setShowSignModal(true)} />
