@@ -168,27 +168,33 @@ function SignatureModal({ open, onClose, supporters, onSuccess }) {
 
             <form onSubmit={handleSubmit} className="grid gap-3">
               <div className="grid gap-3 sm:grid-cols-2">
-                <input
-                  value={name}
-                  onChange={(event) => setName(event.target.value)}
-                  placeholder="Full Name"
-                  className="rounded-lg border border-red-200 px-3 py-2 text-sm"
-                  required
-                />
-                <input
-                  value={mobile}
-                  onChange={(event) => setMobile(event.target.value)}
-                  placeholder="Mobile Number"
-                  className="rounded-lg border border-red-200 px-3 py-2 text-sm"
-                  required
-                />
+                <label className="grid gap-1 text-xs font-semibold text-zinc-700">
+                  Full Name *
+                  <input
+                    value={name}
+                    onChange={(event) => setName(event.target.value)}
+                    placeholder="Full Name"
+                    className="rounded-lg border border-red-200 bg-white px-3 py-2 text-sm font-medium text-zinc-900 placeholder:text-zinc-400"
+                    required
+                  />
+                </label>
+                <label className="grid gap-1 text-xs font-semibold text-zinc-700">
+                  Mobile Number *
+                  <input
+                    value={mobile}
+                    onChange={(event) => setMobile(event.target.value)}
+                    placeholder="Mobile Number"
+                    className="rounded-lg border border-red-200 bg-white px-3 py-2 text-sm font-medium text-zinc-900 placeholder:text-zinc-400"
+                    required
+                  />
+                </label>
               </div>
 
               <div className="grid gap-3 sm:grid-cols-2">
                 <select
                   value={district}
                   onChange={(event) => setDistrict(event.target.value)}
-                  className="rounded-lg border border-red-200 px-3 py-2 text-sm"
+                  className="rounded-lg border border-red-200 bg-white px-3 py-2 text-sm font-medium text-zinc-900"
                 >
                   {districts.map((item) => (
                     <option key={item} value={item}>
@@ -200,7 +206,7 @@ function SignatureModal({ open, onClose, supporters, onSuccess }) {
                   value={otp}
                   onChange={(event) => setOtp(event.target.value)}
                   placeholder="OTP (optional)"
-                  className="rounded-lg border border-red-200 px-3 py-2 text-sm"
+                  className="rounded-lg border border-red-200 bg-white px-3 py-2 text-sm font-medium text-zinc-900 placeholder:text-zinc-400"
                 />
               </div>
 
@@ -209,7 +215,7 @@ function SignatureModal({ open, onClose, supporters, onSuccess }) {
                 onChange={(event) => setMessage(event.target.value)}
                 rows={3}
                 placeholder="Optional message"
-                className="rounded-lg border border-red-200 px-3 py-2 text-sm"
+                className="rounded-lg border border-red-200 bg-white px-3 py-2 text-sm font-medium text-zinc-900 placeholder:text-zinc-400"
               />
 
               <div className="flex gap-2">
