@@ -139,7 +139,11 @@ function SignatureModal({ open, onClose, supporters, onSuccess }) {
       })
 
       localStorage.setItem('petition_last_submit', String(now))
-      onSuccess?.(newSupporter)
+      try {
+        onSuccess?.(newSupporter)
+      } catch {
+        // Keep submit flow successful even if parent state update throws unexpectedly.
+      }
       setFirstName('')
       setLastName('')
       setMobile('')
@@ -150,7 +154,7 @@ function SignatureModal({ open, onClose, supporters, onSuccess }) {
       clearSignature()
       onClose?.()
     } catch (submitError) {
-      setError(submitError.message || 'Submission failed. Please retry.')
+      setError(submitError.message || 'Submission failed. Please retry or refresh once.')
     } finally {
       setLoading(false)
     }

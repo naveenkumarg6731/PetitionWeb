@@ -18,6 +18,21 @@ const configError = 'Firebase configuration missing. Update .env values to enabl
 
 export const normalizePhone = (value) => value.replace(/\D/g, '')
 
+const buildLocalSupporter = ({ name, mobile, district, message, signatureDataUrl }) => {
+  const createdAt = Date.now()
+  const fallbackId = mobile || `no-mobile-${createdAt}-${Math.random().toString(36).slice(2, 8)}`
+
+  return {
+    id: fallbackId,
+    name: name.trim(),
+    mobile,
+    district,
+    message: message.trim(),
+    signatureUrl: signatureDataUrl,
+    createdAt,
+  }
+}
+
 const todayBoundary = () => {
   const now = new Date()
   now.setHours(0, 0, 0, 0)
@@ -28,53 +43,61 @@ export const submitSupporter = async ({ name, mobile, district, message, signatu
   const normalizedMobile = normalizePhone(mobile)
 
   if (!isFirebaseConfigured || !db || !storage) {
-    const createdAt = Date.now()
-    const fallbackId =
-      normalizedMobile || `no-mobile-${createdAt}-${Math.random().toString(36).slice(2, 8)}`
+    return buildLocalSupporter({
+      name,
+      mobile: normalizedMobile,
+      district,
+      message,
+      signatureDataUrl,
+    })
+  }
 
-    return {
-      id: fallbackId,
+  try {
+    let supporterId = normalizedMobile
+
+    if (normalizedMobile) {
+      const existingRef = doc(db, SUPPORTERS_COLLECTION, normalizedMobile)
+      const existing = await getDoc(existingRef)
+
+      if (existing.exists()) {
+        throw new Error('இந்த மொபைல் எண்ணில் ஏற்கனவே பதிவு உள்ளது.')
+      }
+    } else {
+      supporterId = `no-mobile-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`
+    }
+
+    const createdAt = Date.now()
+    const supporterRef = doc(db, SUPPORTERS_COLLECTION, supporterId)
+    const signatureRef = ref(storage, `signatures/${supporterId}_${createdAt}.png`)
+
+    await uploadString(signatureRef, signatureDataUrl, 'data_url')
+    const signatureUrl = await getDownloadURL(signatureRef)
+
+    const payload = {
+      id: supporterId,
       name: name.trim(),
       mobile: normalizedMobile,
       district,
       message: message.trim(),
-      signatureUrl: signatureDataUrl,
+      signatureUrl,
       createdAt,
     }
-  }
 
-  let supporterId = normalizedMobile
-
-  if (normalizedMobile) {
-    const existingRef = doc(db, SUPPORTERS_COLLECTION, normalizedMobile)
-    const existing = await getDoc(existingRef)
-
-    if (existing.exists()) {
-      throw new Error('இந்த மொபைல் எண்ணில் ஏற்கனவே பதிவு உள்ளது.')
+    await setDoc(supporterRef, payload)
+    return payload
+  } catch (error) {
+    if (error instanceof Error && error.message.includes('ஏற்கனவே பதிவு')) {
+      throw error
     }
-  } else {
-    supporterId = `no-mobile-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`
+
+    return buildLocalSupporter({
+      name,
+      mobile: normalizedMobile,
+      district,
+      message,
+      signatureDataUrl,
+    })
   }
-
-  const createdAt = Date.now()
-  const supporterRef = doc(db, SUPPORTERS_COLLECTION, supporterId)
-  const signatureRef = ref(storage, `signatures/${supporterId}_${createdAt}.png`)
-
-  await uploadString(signatureRef, signatureDataUrl, 'data_url')
-  const signatureUrl = await getDownloadURL(signatureRef)
-
-  const payload = {
-    id: supporterId,
-    name: name.trim(),
-    mobile: normalizedMobile,
-    district,
-    message: message.trim(),
-    signatureUrl,
-    createdAt,
-  }
-
-  await setDoc(supporterRef, payload)
-  return payload
 }
 
 export const listenSupporters = (onData, onError) => {
