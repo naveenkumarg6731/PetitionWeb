@@ -15,6 +15,7 @@ import { db, isFirebaseConfigured, storage } from './firebase'
 
 const SUPPORTERS_COLLECTION = 'supporters'
 const configError = 'Firebase configuration missing. Update .env values to enable submissions.'
+const REMOTE_SUBMIT_TIMEOUT_MS = 8000
 
 export const normalizePhone = (value) => value.replace(/\D/g, '')
 
@@ -32,6 +33,14 @@ const buildLocalSupporter = ({ name, mobile, district, message, signatureDataUrl
     createdAt,
   }
 }
+
+const withTimeout = (promise, timeoutMs) =>
+  Promise.race([
+    promise,
+    new Promise((_, reject) => {
+      setTimeout(() => reject(new Error('submit-timeout')), timeoutMs)
+    }),
+  ])
 
 const todayBoundary = () => {
   const now = new Date()
@@ -53,6 +62,7 @@ export const submitSupporter = async ({ name, mobile, district, message, signatu
   }
 
   try {
+    const remoteSubmission = async () => {
     let supporterId = normalizedMobile
 
     if (normalizedMobile) {
@@ -85,6 +95,9 @@ export const submitSupporter = async ({ name, mobile, district, message, signatu
 
     await setDoc(supporterRef, payload)
     return payload
+    }
+
+    return await withTimeout(remoteSubmission(), REMOTE_SUBMIT_TIMEOUT_MS)
   } catch (error) {
     if (error instanceof Error && error.message.includes('ஏற்கனவே பதிவு')) {
       throw error
