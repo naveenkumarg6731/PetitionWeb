@@ -67,7 +67,12 @@ function SignatureModal({ open, onClose, supporters, onSuccess }) {
       return ''
     }
 
-    return signatureRef.current.getTrimmedCanvas().toDataURL('image/png')
+    try {
+      const canvas = signatureRef.current.getCanvas()
+      return canvas ? canvas.toDataURL('image/png') : ''
+    } catch {
+      return ''
+    }
   }
 
   const updateDrawPreview = () => {
