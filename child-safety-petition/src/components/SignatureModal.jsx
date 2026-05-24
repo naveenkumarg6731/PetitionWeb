@@ -18,6 +18,39 @@ const districts = [
 
 const SUBMIT_COOLDOWN_MS = 90_000
 
+const compressSignatureDataUrl = async (dataUrl) => {
+  if (!dataUrl) {
+    return ''
+  }
+
+  if (dataUrl.length < 350000) {
+    return dataUrl
+  }
+
+  const image = new Image()
+  image.src = dataUrl
+  await new Promise((resolve, reject) => {
+    image.onload = resolve
+    image.onerror = reject
+  })
+
+  const maxWidth = 700
+  const ratio = Math.min(1, maxWidth / image.width)
+  const canvas = document.createElement('canvas')
+  canvas.width = Math.max(1, Math.floor(image.width * ratio))
+  canvas.height = Math.max(1, Math.floor(image.height * ratio))
+  const context = canvas.getContext('2d')
+
+  if (!context) {
+    return dataUrl
+  }
+
+  context.fillStyle = '#ffffff'
+  context.fillRect(0, 0, canvas.width, canvas.height)
+  context.drawImage(image, 0, 0, canvas.width, canvas.height)
+  return canvas.toDataURL('image/jpeg', 0.78)
+}
+
 function SignatureModal({ open, onClose, supporters, onSuccess }) {
   const signatureRef = useRef(null)
   const [activeTab, setActiveTab] = useState('draw')
@@ -135,12 +168,14 @@ function SignatureModal({ open, onClose, supporters, onSuccess }) {
     setLoading(true)
 
     try {
+      const optimizedSignature = await compressSignatureDataUrl(signatureDataUrl)
+
       const newSupporter = await submitSupporter({
         name: fullName,
         mobile: normalizedMobile,
         district,
         message,
-        signatureDataUrl,
+        signatureDataUrl: optimizedSignature,
       })
 
       localStorage.setItem('petition_last_submit', String(now))
@@ -173,24 +208,24 @@ function SignatureModal({ open, onClose, supporters, onSuccess }) {
           animate={{ opacity: 1 }}
           exit={{ opacity: 0 }}
           onClick={() => onClose?.()}
-          className="fixed inset-0 z-50 grid place-items-center bg-black/70 p-3"
+          className="fixed inset-0 z-50 grid place-items-center bg-slate-900/20 p-3"
         >
           <motion.div
             initial={{ scale: 0.95, opacity: 0, y: 20 }}
             animate={{ scale: 1, opacity: 1, y: 0 }}
             exit={{ scale: 0.95, opacity: 0 }}
             onClick={(event) => event.stopPropagation()}
-            className="w-full max-w-2xl rounded-2xl border border-red-300/40 bg-white p-4 shadow-2xl sm:p-6"
+            className="w-full max-w-2xl rounded-2xl border border-slate-200 bg-white p-4 shadow-lg sm:p-6"
           >
             <div className="mb-4 flex items-start justify-between gap-3">
               <div>
-                <h3 className="text-xl font-bold text-red-950">நானும் கையெழுத்திடுகிறேன்</h3>
+                <h3 className="text-xl font-bold text-slate-900">நானும் கையெழுத்திடுகிறேன்</h3>
                 <p className="text-sm text-zinc-600">Sign this public petition for child safety.</p>
               </div>
               <button
                 type="button"
                 onClick={onClose}
-                className="rounded-lg border border-red-200 px-3 py-1 text-sm text-red-900"
+                className="rounded-lg border border-slate-200 px-3 py-1 text-sm text-slate-700"
               >
                 Close
               </button>
@@ -204,7 +239,7 @@ function SignatureModal({ open, onClose, supporters, onSuccess }) {
                     value={firstName}
                     onChange={(event) => setFirstName(event.target.value)}
                     placeholder="First Name"
-                    className="rounded-lg border border-red-200 bg-white px-3 py-2 text-sm font-medium text-zinc-900 placeholder:text-zinc-400"
+                    className="rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm font-medium text-zinc-900 placeholder:text-zinc-400"
                     required
                   />
                 </label>
@@ -214,7 +249,7 @@ function SignatureModal({ open, onClose, supporters, onSuccess }) {
                     value={lastName}
                     onChange={(event) => setLastName(event.target.value)}
                     placeholder="Last Name"
-                    className="rounded-lg border border-red-200 bg-white px-3 py-2 text-sm font-medium text-zinc-900 placeholder:text-zinc-400"
+                    className="rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm font-medium text-zinc-900 placeholder:text-zinc-400"
                     required
                   />
                 </label>
@@ -224,7 +259,7 @@ function SignatureModal({ open, onClose, supporters, onSuccess }) {
                     value={mobile}
                     onChange={(event) => setMobile(event.target.value)}
                     placeholder="Mobile Number"
-                    className="rounded-lg border border-red-200 bg-white px-3 py-2 text-sm font-medium text-zinc-900 placeholder:text-zinc-400"
+                    className="rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm font-medium text-zinc-900 placeholder:text-zinc-400"
                   />
                 </label>
               </div>
@@ -233,7 +268,7 @@ function SignatureModal({ open, onClose, supporters, onSuccess }) {
                 <select
                   value={district}
                   onChange={(event) => setDistrict(event.target.value)}
-                  className="rounded-lg border border-red-200 bg-white px-3 py-2 text-sm font-medium text-zinc-900"
+                  className="rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm font-medium text-zinc-900"
                 >
                   {districts.map((item) => (
                     <option key={item} value={item}>
@@ -245,7 +280,7 @@ function SignatureModal({ open, onClose, supporters, onSuccess }) {
                   value={otp}
                   onChange={(event) => setOtp(event.target.value)}
                   placeholder="OTP (optional)"
-                  className="rounded-lg border border-red-200 bg-white px-3 py-2 text-sm font-medium text-zinc-900 placeholder:text-zinc-400"
+                  className="rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm font-medium text-zinc-900 placeholder:text-zinc-400"
                 />
               </div>
 
@@ -254,7 +289,7 @@ function SignatureModal({ open, onClose, supporters, onSuccess }) {
                 onChange={(event) => setMessage(event.target.value)}
                 rows={3}
                 placeholder="Optional message"
-                className="rounded-lg border border-red-200 bg-white px-3 py-2 text-sm font-medium text-zinc-900 placeholder:text-zinc-400"
+                className="rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm font-medium text-zinc-900 placeholder:text-zinc-400"
               />
 
               <div className="flex gap-2">
@@ -262,7 +297,7 @@ function SignatureModal({ open, onClose, supporters, onSuccess }) {
                   type="button"
                   onClick={() => setActiveTab('draw')}
                   className={`rounded-lg px-3 py-1.5 text-sm ${
-                    activeTab === 'draw' ? 'bg-red-900 text-white' : 'border border-red-200 text-red-900'
+                    activeTab === 'draw' ? 'bg-slate-800 text-white' : 'border border-slate-200 text-slate-700'
                   }`}
                 >
                   Draw Signature
@@ -271,7 +306,7 @@ function SignatureModal({ open, onClose, supporters, onSuccess }) {
                   type="button"
                   onClick={() => setActiveTab('upload')}
                   className={`rounded-lg px-3 py-1.5 text-sm ${
-                    activeTab === 'upload' ? 'bg-red-900 text-white' : 'border border-red-200 text-red-900'
+                    activeTab === 'upload' ? 'bg-slate-800 text-white' : 'border border-slate-200 text-slate-700'
                   }`}
                 >
                   Upload Signature
@@ -279,42 +314,42 @@ function SignatureModal({ open, onClose, supporters, onSuccess }) {
               </div>
 
               {activeTab === 'draw' ? (
-                <div className="rounded-xl border border-red-200 p-2">
+                <div className="rounded-xl border border-slate-200 p-2">
                   <SignatureCanvas
                     ref={signatureRef}
-                    penColor="#7f1d1d"
+                    penColor="#334155"
                     onEnd={updateDrawPreview}
                     canvasProps={{ className: 'signature-canvas' }}
                   />
                 </div>
               ) : (
-                <label className="grid gap-2 rounded-xl border border-red-200 p-3 text-sm">
+                <label className="grid gap-2 rounded-xl border border-slate-200 p-3 text-sm">
                   <span>Upload signature image</span>
                   <input type="file" accept="image/*" onChange={onUploadSignature} />
                 </label>
               )}
 
               {signaturePreview ? (
-                <div className="rounded-lg border border-red-200 bg-red-50/40 p-2">
-                  <p className="mb-1 text-xs font-semibold text-red-900">Preview</p>
+                <div className="rounded-lg border border-slate-200 bg-slate-50 p-2">
+                  <p className="mb-1 text-xs font-semibold text-slate-700">Preview</p>
                   <img src={signaturePreview} alt="Signature preview" className="h-20 object-contain" />
                 </div>
               ) : null}
 
-              {error ? <p className="text-sm text-red-700">{error}</p> : null}
+              {error ? <p className="text-sm text-slate-700">{error}</p> : null}
 
               <div className="flex justify-end gap-2">
                 <button
                   type="button"
                   onClick={clearSignature}
-                  className="rounded-lg border border-red-200 px-3 py-2 text-sm text-red-900"
+                  className="rounded-lg border border-slate-200 px-3 py-2 text-sm text-slate-700"
                 >
                   Clear
                 </button>
                 <button
                   type="submit"
                   disabled={loading}
-                  className="rounded-lg bg-red-900 px-4 py-2 text-sm font-semibold text-white"
+                  className="rounded-lg bg-slate-800 px-4 py-2 text-sm font-semibold text-white"
                 >
                   {loading ? 'Submitting...' : 'Submit Signature'}
                 </button>

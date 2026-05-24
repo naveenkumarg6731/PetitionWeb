@@ -26,6 +26,18 @@ const buildLocalSupporter = ({ name, mobile, district, message, signatureDataUrl
   }
 }
 
+const mergeSupporterLists = (...lists) => {
+  const map = new Map()
+
+  lists.flat().forEach((item) => {
+    if (item?.id) {
+      map.set(item.id, item)
+    }
+  })
+
+  return Array.from(map.values()).sort((a, b) => Number(b.createdAt || 0) - Number(a.createdAt || 0))
+}
+
 const getCachedSupporters = () => {
   try {
     const raw = localStorage.getItem(LOCAL_CACHE_KEY)
@@ -37,13 +49,15 @@ const getCachedSupporters = () => {
 }
 
 const saveCachedSupporters = (supporters) => {
-  localStorage.setItem(LOCAL_CACHE_KEY, JSON.stringify(supporters))
+  try {
+    localStorage.setItem(LOCAL_CACHE_KEY, JSON.stringify(supporters))
+  } catch {
+    // Ignore cache write failures (quota exceeded/private mode).
+  }
 }
 
 const addToCache = (supporter) => {
-  const next = [supporter, ...getCachedSupporters()].sort(
-    (a, b) => Number(b.createdAt || 0) - Number(a.createdAt || 0),
-  )
+  const next = mergeSupporterLists([supporter], getCachedSupporters())
   saveCachedSupporters(next)
   return supporter
 }
@@ -131,7 +145,11 @@ export const listenSupporters = (onData, onError) => {
   const fetchSupporters = async () => {
     try {
       const payload = await requestJson(`${API}/supporters`)
-      const list = payload.supporters || []
+      const remoteList = payload.supporters || []
+      const cachedList = getCachedSupporters()
+      const list = remoteList.length > 0
+        ? mergeSupporterLists(remoteList, cachedList)
+        : cachedList
       saveCachedSupporters(list)
       if (!disposed) {
         onData(list)
@@ -161,7 +179,9 @@ export const fetchSupportersByDistrict = async (district) => {
 
   const query = district ? `?district=${encodeURIComponent(district)}` : ''
   const payload = await requestJson(`${API}/supporters${query}`)
-  return payload.supporters || []
+  const remoteList = payload.supporters || []
+  const merged = mergeSupporterLists(remoteList, getCachedSupporters())
+  return district ? merged.filter((item) => item.district === district) : merged
 }
 
 export const deleteSupporter = async (id) => {

@@ -6,10 +6,10 @@ function CounterCard({ label, value }) {
       initial={{ opacity: 0, y: 20 }}
       whileInView={{ opacity: 1, y: 0 }}
       viewport={{ once: true, amount: 0.2 }}
-      className="rounded-xl border border-amber-200 bg-amber-50/70 p-4"
+      className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm"
     >
-      <p className="text-xs uppercase tracking-widest text-amber-900">{label}</p>
-      <p className="mt-2 text-3xl font-black text-red-900">{value}</p>
+      <p className="text-xs uppercase tracking-widest text-slate-600">{label}</p>
+      <p className="mt-2 text-3xl font-black text-slate-900">{value}</p>
     </motion.div>
   )
 }

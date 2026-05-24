@@ -11,7 +11,7 @@ function FloatingWhatsAppButton({ onOpenSign }) {
       <button
         type="button"
         onClick={onOpenSign}
-        className="inline-flex items-center justify-center rounded-full border border-red-200/60 bg-red-800 px-4 py-3 text-sm font-bold text-white shadow-xl"
+        className="inline-flex items-center justify-center rounded-full border border-slate-200 bg-white px-4 py-3 text-sm font-bold text-slate-900 shadow-sm"
       >
         Support Petition
       </button>
@@ -19,7 +19,7 @@ function FloatingWhatsAppButton({ onOpenSign }) {
         href={href}
         target="_blank"
         rel="noreferrer"
-        className="inline-flex items-center justify-center rounded-full border border-green-300 bg-green-600 px-4 py-3 text-sm font-semibold text-white shadow-lg shadow-green-700/30 transition hover:-translate-y-0.5 hover:bg-green-500"
+        className="inline-flex items-center justify-center rounded-full border border-slate-200 bg-white px-4 py-3 text-sm font-semibold text-slate-800 shadow-sm transition hover:-translate-y-0.5 hover:bg-slate-100"
         aria-label="WhatsApp இல் பகிரவும்"
       >
         WhatsApp பகிர்வு
