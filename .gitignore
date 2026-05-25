@@ -1,3 +1,6 @@
 node_modules/
 child-safety-petition/node_modules/
 child-safety-petition/dist/
+
+# Local Netlify folder
+.netlify

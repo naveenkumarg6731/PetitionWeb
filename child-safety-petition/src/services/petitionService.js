@@ -1,6 +1,4 @@
-import { getAdminToken } from './authService'
-
-const API = '/.netlify/functions'
+import { supabase } from './supabaseClient'
 const LOCAL_CACHE_KEY = 'petition_local_supporters'
 
 export const normalizePhone = (value) => value.replace(/\D/g, '')
@@ -9,7 +7,7 @@ const todayBoundary = () => {
   const now = new Date()
   now.setHours(0, 0, 0, 0)
   return now.getTime()
-}
+
 
 const buildLocalSupporter = ({ name, mobile, district, message, signatureDataUrl }) => {
   const createdAt = Date.now()
@@ -24,7 +22,7 @@ const buildLocalSupporter = ({ name, mobile, district, message, signatureDataUrl
     signatureUrl: signatureDataUrl,
     createdAt,
   }
-}
+
 
 const mergeSupporterLists = (...lists) => {
   const map = new Map()
@@ -118,30 +116,49 @@ export const submitSupporter = async ({ name, mobile, district, message, signatu
     return addToCache(localSupporter)
   }
 
-  try {
-    const remoteSupporter = await requestJson(`${API}/submit-supporter`, {
-      method: 'POST',
-      headers: { 'content-type': 'application/json' },
-      body: JSON.stringify({
+  // Upload signature image to Supabase Storage
+  let signatureUrl = ''
+  if (signatureDataUrl) {
+    const res = await fetch(signatureDataUrl)
+    const blob = await res.blob()
+    const fileName = `signatures/${Date.now()}-${Math.random().toString(36).slice(2, 8)}.jpg`
+    const { error: uploadError } = await supabase.storage.from('signatures').upload(fileName, blob, {
+      contentType: 'image/jpeg',
+      upsert: false,
+    })
+    if (uploadError) {
+      throw new Error('Signature upload failed: ' + uploadError.message)
+    }
+    signatureUrl = supabase.storage.from('signatures').getPublicUrl(fileName).data.publicUrl
+  }
+
+  // Insert supporter data into Supabase
+  const { data: supporter, error } = await supabase
+    .from('supporters')
+    .insert([
+      {
         name,
         mobile: normalizedMobile,
         district,
         message,
-        signatureDataUrl,
-      }),
-    })
+        signature_url: signatureUrl,
+      },
+    ])
+    .select()
+    .single()
 
-    return addToCache(remoteSupporter)
-  } catch (error) {
-    if (error instanceof Error) {
-      throw error
-    }
-
-    throw new Error('Could not save signature to server. Please try again.', { cause: error })
+  if (error) {
+    throw new Error('Could not save supporter: ' + error.message)
   }
+
+  return addToCache({
+    ...supporter,
+    signatureUrl: signatureUrl,
+    createdAt: supporter.created_at ? new Date(supporter.created_at).getTime() : Date.now(),
+  })
+}
 }
 
-export const listenSupporters = (onData, onError) => {
   let disposed = false
 
   if (isLocalRuntime()) {
@@ -153,9 +170,16 @@ export const listenSupporters = (onData, onError) => {
 
   const fetchSupporters = async () => {
     try {
-      const payload = await requestJson(`${API}/supporters`)
-      const remoteList = payload.supporters || []
-      const list = [...remoteList].sort((a, b) => Number(b.createdAt || 0) - Number(a.createdAt || 0))
+      const { data, error } = await supabase
+        .from('supporters')
+        .select('*')
+        .order('created_at', { ascending: false })
+      if (error) throw error
+      const list = (data || []).map((item) => ({
+        ...item,
+        signatureUrl: item.signature_url,
+        createdAt: item.created_at ? new Date(item.created_at).getTime() : Date.now(),
+      }))
       saveCachedSupporters(list)
       if (!disposed) {
         onData(list)
@@ -163,7 +187,7 @@ export const listenSupporters = (onData, onError) => {
     } catch {
       if (!disposed) {
         onData(getCachedSupporters())
-        onError('Netlify backend not reachable. Running in local mode.')
+        onError?.('Supabase backend not reachable. Running in local mode.')
       }
     }
   }
@@ -183,11 +207,19 @@ export const fetchSupportersByDistrict = async (district) => {
     return district ? cache.filter((item) => item.district === district) : cache
   }
 
-  const query = district ? `?district=${encodeURIComponent(district)}` : ''
-  const payload = await requestJson(`${API}/supporters${query}`)
-  const remoteList = payload.supporters || []
-  saveCachedSupporters(remoteList)
-  return remoteList
+  let query = supabase.from('supporters').select('*')
+  if (district) {
+    query = query.eq('district', district)
+  }
+  const { data, error } = await query.order('created_at', { ascending: false })
+  if (error) throw error
+  const list = (data || []).map((item) => ({
+    ...item,
+    signatureUrl: item.signature_url,
+    createdAt: item.created_at ? new Date(item.created_at).getTime() : Date.now(),
+  }))
+  saveCachedSupporters(list)
+  return list
 }
 
 export const deleteSupporter = async (id) => {
@@ -196,21 +228,9 @@ export const deleteSupporter = async (id) => {
     return
   }
 
-  const token = getAdminToken()
-
-  if (!token) {
-    throw new Error('Admin session expired. Please login again.')
-  }
-
-  await requestJson(`${API}/delete-supporter`, {
-    method: 'POST',
-    headers: {
-      'content-type': 'application/json',
-      authorization: `Bearer ${token}`,
-    },
-    body: JSON.stringify({ id }),
-  })
-
+  // Delete supporter from Supabase
+  const { error } = await supabase.from('supporters').delete().eq('id', id)
+  if (error) throw error
   removeFromCache(id)
 }
 
