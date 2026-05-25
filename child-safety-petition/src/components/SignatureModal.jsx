@@ -17,6 +17,8 @@ const districts = [
 ]
 
 const SUBMIT_COOLDOWN_MS = 90_000
+const MAX_UPLOAD_FILE_BYTES = 8 * 1024 * 1024
+const MAX_SIGNATURE_DATA_URL_LENGTH = 1_500_000
 
 const compressSignatureDataUrl = async (dataUrl) => {
   if (!dataUrl) {
@@ -35,7 +37,8 @@ const compressSignatureDataUrl = async (dataUrl) => {
   })
 
   const maxWidth = 700
-  const ratio = Math.min(1, maxWidth / image.width)
+  const maxHeight = 260
+  const ratio = Math.min(1, maxWidth / image.width, maxHeight / image.height)
   const canvas = document.createElement('canvas')
   canvas.width = Math.max(1, Math.floor(image.width * ratio))
   canvas.height = Math.max(1, Math.floor(image.height * ratio))
@@ -49,6 +52,11 @@ const compressSignatureDataUrl = async (dataUrl) => {
   context.fillRect(0, 0, canvas.width, canvas.height)
   context.drawImage(image, 0, 0, canvas.width, canvas.height)
   return canvas.toDataURL('image/jpeg', 0.78)
+}
+
+const isSupportedImageType = (file) => {
+  const supportedTypes = ['image/png', 'image/jpeg', 'image/jpg', 'image/webp']
+  return supportedTypes.includes(String(file?.type || '').toLowerCase())
 }
 
 function SignatureModal({ open, onClose, supporters, onSuccess }) {
@@ -121,11 +129,42 @@ function SignatureModal({ open, onClose, supporters, onSuccess }) {
       return
     }
 
+    setError('')
+
+    if (!isSupportedImageType(file)) {
+      setError('Please upload PNG, JPG, or WEBP image only.')
+      event.target.value = ''
+      return
+    }
+
+    if (file.size > MAX_UPLOAD_FILE_BYTES) {
+      setError('Image is too large. Please upload an image under 8MB.')
+      event.target.value = ''
+      return
+    }
+
     const reader = new FileReader()
-    reader.onload = () => {
+    reader.onload = async () => {
       const value = String(reader.result || '')
-      setUploadedSignature(value)
-      setSignaturePreview(value)
+      try {
+        const optimized = await compressSignatureDataUrl(value)
+
+        if (!optimized || optimized.length > MAX_SIGNATURE_DATA_URL_LENGTH) {
+          setError('Signature image is still too large. Use a smaller/cropped image.')
+          event.target.value = ''
+          return
+        }
+
+        setUploadedSignature(optimized)
+        setSignaturePreview(optimized)
+      } catch {
+        setError('Could not process the uploaded image. Please try another image.')
+        event.target.value = ''
+      }
+    }
+    reader.onerror = () => {
+      setError('Could not read the selected image. Please try again.')
+      event.target.value = ''
     }
     reader.readAsDataURL(file)
   }
@@ -325,7 +364,7 @@ function SignatureModal({ open, onClose, supporters, onSuccess }) {
               ) : (
                 <label className="grid gap-2 rounded-xl border border-slate-200 p-3 text-sm">
                   <span>Upload signature image</span>
-                  <input type="file" accept="image/*" onChange={onUploadSignature} />
+                  <input type="file" accept="image/png,image/jpeg,image/webp" onChange={onUploadSignature} />
                 </label>
               )}
 
