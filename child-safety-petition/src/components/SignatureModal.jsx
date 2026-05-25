@@ -208,14 +208,14 @@ function SignatureModal({ open, onClose, supporters, onSuccess }) {
           animate={{ opacity: 1 }}
           exit={{ opacity: 0 }}
           onClick={() => onClose?.()}
-          className="fixed inset-0 z-50 grid place-items-center bg-slate-900/20 p-3"
+          className="fixed inset-0 z-50 overflow-y-auto bg-slate-900/20 p-3"
         >
           <motion.div
             initial={{ scale: 0.95, opacity: 0, y: 20 }}
             animate={{ scale: 1, opacity: 1, y: 0 }}
             exit={{ scale: 0.95, opacity: 0 }}
             onClick={(event) => event.stopPropagation()}
-            className="w-full max-w-2xl rounded-2xl border border-slate-200 bg-white p-4 shadow-lg sm:p-6"
+            className="mx-auto my-3 w-full max-w-2xl max-h-[calc(100dvh-1.5rem)] overflow-y-auto rounded-2xl border border-slate-200 bg-white p-4 shadow-lg sm:my-6 sm:p-6"
           >
             <div className="mb-4 flex items-start justify-between gap-3">
               <div>

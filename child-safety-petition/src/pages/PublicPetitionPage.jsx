@@ -31,7 +31,7 @@ function PublicPetitionPage() {
   const [supporters, setSupporters] = useState([])
   const [isLoading, setIsLoading] = useState(true)
   const [loadError, setLoadError] = useState('')
-  const [showSignModal, setShowSignModal] = useState(true)
+  const [showSignModal, setShowSignModal] = useState(false)
   const [showSuccess, setShowSuccess] = useState(false)
 
   useEffect(() => {

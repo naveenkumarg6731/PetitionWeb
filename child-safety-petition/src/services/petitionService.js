@@ -116,19 +116,11 @@ export const submitSupporter = async ({ name, mobile, district, message, signatu
 
     return addToCache(remoteSupporter)
   } catch (error) {
-    if (error instanceof Error && error.message.includes('ஏற்கனவே பதிவு')) {
+    if (error instanceof Error) {
       throw error
     }
 
-    const localSupporter = buildLocalSupporter({
-      name,
-      mobile: normalizedMobile,
-      district,
-      message,
-      signatureDataUrl,
-    })
-
-    return addToCache(localSupporter)
+    throw new Error('Could not save signature to server. Please try again.', { cause: error })
   }
 }
 
@@ -146,10 +138,7 @@ export const listenSupporters = (onData, onError) => {
     try {
       const payload = await requestJson(`${API}/supporters`)
       const remoteList = payload.supporters || []
-      const cachedList = getCachedSupporters()
-      const list = remoteList.length > 0
-        ? mergeSupporterLists(remoteList, cachedList)
-        : cachedList
+      const list = [...remoteList].sort((a, b) => Number(b.createdAt || 0) - Number(a.createdAt || 0))
       saveCachedSupporters(list)
       if (!disposed) {
         onData(list)
@@ -180,8 +169,8 @@ export const fetchSupportersByDistrict = async (district) => {
   const query = district ? `?district=${encodeURIComponent(district)}` : ''
   const payload = await requestJson(`${API}/supporters${query}`)
   const remoteList = payload.supporters || []
-  const merged = mergeSupporterLists(remoteList, getCachedSupporters())
-  return district ? merged.filter((item) => item.district === district) : merged
+  saveCachedSupporters(remoteList)
+  return remoteList
 }
 
 export const deleteSupporter = async (id) => {
