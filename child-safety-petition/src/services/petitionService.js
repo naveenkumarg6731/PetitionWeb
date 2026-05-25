@@ -7,12 +7,11 @@ const todayBoundary = () => {
   const now = new Date()
   now.setHours(0, 0, 0, 0)
   return now.getTime()
-
+}
 
 const buildLocalSupporter = ({ name, mobile, district, message, signatureDataUrl }) => {
   const createdAt = Date.now()
   const fallbackId = mobile || `no-mobile-${createdAt}-${Math.random().toString(36).slice(2, 8)}`
-
   return {
     id: fallbackId,
     name: String(name || '').trim(),
@@ -22,7 +21,7 @@ const buildLocalSupporter = ({ name, mobile, district, message, signatureDataUrl
     signatureUrl: signatureDataUrl,
     createdAt,
   }
-
+}
 
 const mergeSupporterLists = (...lists) => {
   const map = new Map()
@@ -59,9 +58,9 @@ const addToCache = (supporter) => {
   saveCachedSupporters(next)
   return supporter
 }
+}
 
 const removeFromCache = (id) => {
-  const next = getCachedSupporters().filter((item) => item.id !== id)
   saveCachedSupporters(next)
 }
 
@@ -156,7 +155,6 @@ export const submitSupporter = async ({ name, mobile, district, message, signatu
     signatureUrl: signatureUrl,
     createdAt: supporter.created_at ? new Date(supporter.created_at).getTime() : Date.now(),
   })
-}
 }
 
   let disposed = false
