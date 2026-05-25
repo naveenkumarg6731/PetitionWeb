@@ -158,6 +158,7 @@ export const submitSupporter = async ({ name, mobile, district, message, signatu
   })
 }
 
+export const listenSupporters = (onData, onError) => {
   let disposed = false
 
   if (isLocalRuntime()) {
@@ -198,6 +199,7 @@ export const submitSupporter = async ({ name, mobile, district, message, signatu
     disposed = true
     clearInterval(timer)
   }
+}
 export const fetchSupportersByDistrict = async (district) => {
   if (isLocalRuntime()) {
     const cache = getCachedSupporters()
