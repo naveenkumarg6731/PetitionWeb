@@ -1,4 +1,4 @@
-import { findByMobile, saveSupporter } from './_supportersStore.js'
+import { saveSupporter } from './_supportersStore.js'
 const MAX_SIGNATURE_DATA_URL_LENGTH = 380_000
 
 const json = (status, payload) =>
@@ -8,27 +8,22 @@ const json = (status, payload) =>
   })
 
 export default async (request) => {
-  if (request.method !== 'POST') {
-    return json(405, { error: 'Method not allowed' })
-  }
+  console.log('Incoming request headers:', request.headers);
+  const body = await request.text();
+  console.log(`Incoming payload size: ${body.length} bytes`);
 
   try {
-    const body = await request.json()
-    const { name, mobile, district, message, signatureDataUrl } = body
+    const parsedBody = JSON.parse(body);
+    const { name, mobile, district, message, signatureDataUrl } = parsedBody;
 
     if (!name || !district || !signatureDataUrl) {
-      return json(400, { error: 'Required fields missing' })
+      console.warn('Validation failed: Missing required fields');
+      return json(400, { error: 'Required fields missing' });
     }
 
     if (String(signatureDataUrl).length > MAX_SIGNATURE_DATA_URL_LENGTH) {
-      return json(413, { error: 'Uploaded signature image is too large. Please use a smaller image.' })
-    }
-
-    if (mobile) {
-      const duplicate = await findByMobile(mobile)
-      if (duplicate) {
-        return json(409, { error: 'இந்த மொபைல் எண்ணில் ஏற்கனவே பதிவு உள்ளது.' })
-      }
+      console.warn('Validation failed: Signature data URL too large');
+      return json(413, { error: 'Uploaded signature image is too large. Please use a smaller image.' });
     }
 
     const createdAt = Date.now()
@@ -43,8 +38,10 @@ export default async (request) => {
     }
 
     await saveSupporter(supporter)
+    console.log('Supporter saved successfully:', supporter);
     return json(200, supporter)
   } catch (error) {
+    console.error('Error processing request:', error);
     return json(500, { error: error instanceof Error ? error.message : 'Submit failed' })
   }
 }

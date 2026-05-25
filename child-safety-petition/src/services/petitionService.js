@@ -77,6 +77,9 @@ const isLocalRuntime = () => {
 }
 
 const requestJson = async (url, options = {}) => {
+  const payloadSize = options?.body?.length || 0
+  console.log(`Request to ${url} with payload size: ${payloadSize} bytes`)
+
   const response = await fetch(url, options)
   const raw = await response.text().catch(() => '')
 
@@ -85,22 +88,19 @@ const requestJson = async (url, options = {}) => {
     try {
       payload = JSON.parse(raw)
     } catch {
-      payload = {}
+      console.warn('Non-JSON response:', raw.slice(0, 200))
     }
   }
 
   if (!response.ok) {
+    console.error(`Request failed with status ${response.status}:`, payload.error || raw)
     if (response.status === 413) {
       throw new Error('Uploaded signature image is too large. Please use a smaller image.')
     }
-
-    const fallbackMessage = raw && !payload?.error
-      ? raw.slice(0, 180)
-      : 'Request failed'
-
-    throw new Error(payload.error || fallbackMessage)
+    throw new Error(payload.error || 'Request failed')
   }
 
+  console.log(`Response from ${url}:`, payload)
   return payload
 }
 
