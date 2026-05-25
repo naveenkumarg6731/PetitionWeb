@@ -17,15 +17,15 @@ const districts = [
 ]
 
 const SUBMIT_COOLDOWN_MS = 90_000
-const MAX_UPLOAD_FILE_BYTES = 8 * 1024 * 1024
-const MAX_SIGNATURE_DATA_URL_LENGTH = 900_000
+const MAX_UPLOAD_FILE_BYTES = 5 * 1024 * 1024
+const MAX_SIGNATURE_DATA_URL_LENGTH = 350_000
 
 const compressSignatureDataUrl = async (dataUrl) => {
   if (!dataUrl) {
     return ''
   }
 
-  if (dataUrl.length < 350000) {
+  if (dataUrl.length <= MAX_SIGNATURE_DATA_URL_LENGTH) {
     return dataUrl
   }
 
@@ -36,8 +36,8 @@ const compressSignatureDataUrl = async (dataUrl) => {
     image.onerror = reject
   })
 
-  const maxWidth = 560
-  const maxHeight = 220
+  const maxWidth = 420
+  const maxHeight = 160
   const ratio = Math.min(1, maxWidth / image.width, maxHeight / image.height)
   const canvas = document.createElement('canvas')
   canvas.width = Math.max(1, Math.floor(image.width * ratio))
@@ -52,7 +52,7 @@ const compressSignatureDataUrl = async (dataUrl) => {
   context.fillRect(0, 0, canvas.width, canvas.height)
   context.drawImage(image, 0, 0, canvas.width, canvas.height)
 
-  const qualities = [0.72, 0.62, 0.52, 0.44]
+  const qualities = [0.6, 0.5, 0.42, 0.34, 0.28]
   for (const quality of qualities) {
     const output = canvas.toDataURL('image/jpeg', quality)
     if (output.length <= MAX_SIGNATURE_DATA_URL_LENGTH) {
@@ -60,7 +60,7 @@ const compressSignatureDataUrl = async (dataUrl) => {
     }
   }
 
-  return canvas.toDataURL('image/jpeg', 0.4)
+  return canvas.toDataURL('image/jpeg', 0.24)
 }
 
 const isSupportedImageType = (file) => {
@@ -119,7 +119,7 @@ function SignatureModal({ open, onClose, supporters, onSuccess }) {
 
     try {
       const canvas = signatureRef.current.getCanvas()
-      return canvas ? canvas.toDataURL('image/png') : ''
+      return canvas ? canvas.toDataURL('image/jpeg', 0.72) : ''
     } catch {
       return ''
     }
@@ -147,7 +147,7 @@ function SignatureModal({ open, onClose, supporters, onSuccess }) {
     }
 
     if (file.size > MAX_UPLOAD_FILE_BYTES) {
-      setError('Image is too large. Please upload an image under 8MB.')
+      setError('Image is too large. Please upload an image under 5MB.')
       event.target.value = ''
       return
     }
@@ -247,7 +247,11 @@ function SignatureModal({ open, onClose, supporters, onSuccess }) {
       clearSignature()
       onClose?.()
     } catch (submitError) {
-      setError(submitError.message || 'Submission failed. Please retry or refresh once.')
+      const message =
+        submitError instanceof Error
+          ? submitError.message
+          : 'Submission failed. Please retry or refresh once.'
+      setError(message)
     } finally {
       setLoading(false)
     }

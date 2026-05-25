@@ -1,4 +1,5 @@
 import { findByMobile, saveSupporter } from './_supportersStore.js'
+const MAX_SIGNATURE_DATA_URL_LENGTH = 380_000
 
 const json = (status, payload) =>
   new Response(JSON.stringify(payload), {
@@ -17,6 +18,10 @@ export default async (request) => {
 
     if (!name || !district || !signatureDataUrl) {
       return json(400, { error: 'Required fields missing' })
+    }
+
+    if (String(signatureDataUrl).length > MAX_SIGNATURE_DATA_URL_LENGTH) {
+      return json(413, { error: 'Uploaded signature image is too large. Please use a smaller image.' })
     }
 
     if (mobile) {
@@ -39,7 +44,7 @@ export default async (request) => {
 
     await saveSupporter(supporter)
     return json(200, supporter)
-  } catch {
-    return json(500, { error: 'Submit failed' })
+  } catch (error) {
+    return json(500, { error: error instanceof Error ? error.message : 'Submit failed' })
   }
 }
