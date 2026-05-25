@@ -374,7 +374,8 @@ function SignatureModal({ open, onClose, supporters, onSuccess }) {
                 <div className="rounded-xl border border-slate-200 p-2">
                   <SignatureCanvas
                     ref={signatureRef}
-                    penColor="#334155"
+                    penColor="#000000"
+                    backgroundColor="#ffffff"
                     onEnd={updateDrawPreview}
                     canvasProps={{ className: 'signature-canvas' }}
                   />
