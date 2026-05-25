@@ -56,11 +56,12 @@ const saveCachedSupporters = (supporters) => {
 const addToCache = (supporter) => {
   const next = mergeSupporterLists([supporter], getCachedSupporters())
   saveCachedSupporters(next)
+
   return supporter
-}
 }
 
 const removeFromCache = (id) => {
+  const next = getCachedSupporters().filter((item) => item.id !== id)
   saveCachedSupporters(next)
 }
 
@@ -197,8 +198,6 @@ export const submitSupporter = async ({ name, mobile, district, message, signatu
     disposed = true
     clearInterval(timer)
   }
-}
-
 export const fetchSupportersByDistrict = async (district) => {
   if (isLocalRuntime()) {
     const cache = getCachedSupporters()
