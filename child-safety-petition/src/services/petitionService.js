@@ -78,10 +78,27 @@ const isLocalRuntime = () => {
 
 const requestJson = async (url, options = {}) => {
   const response = await fetch(url, options)
-  const payload = await response.json().catch(() => ({}))
+  const raw = await response.text().catch(() => '')
+
+  let payload = {}
+  if (raw) {
+    try {
+      payload = JSON.parse(raw)
+    } catch {
+      payload = {}
+    }
+  }
 
   if (!response.ok) {
-    throw new Error(payload.error || 'Request failed')
+    if (response.status === 413) {
+      throw new Error('Uploaded signature image is too large. Please use a smaller image.')
+    }
+
+    const fallbackMessage = raw && !payload?.error
+      ? raw.slice(0, 180)
+      : 'Request failed'
+
+    throw new Error(payload.error || fallbackMessage)
   }
 
   return payload

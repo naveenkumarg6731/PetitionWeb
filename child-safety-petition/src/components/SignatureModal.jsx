@@ -18,7 +18,7 @@ const districts = [
 
 const SUBMIT_COOLDOWN_MS = 90_000
 const MAX_UPLOAD_FILE_BYTES = 8 * 1024 * 1024
-const MAX_SIGNATURE_DATA_URL_LENGTH = 1_500_000
+const MAX_SIGNATURE_DATA_URL_LENGTH = 900_000
 
 const compressSignatureDataUrl = async (dataUrl) => {
   if (!dataUrl) {
@@ -36,8 +36,8 @@ const compressSignatureDataUrl = async (dataUrl) => {
     image.onerror = reject
   })
 
-  const maxWidth = 700
-  const maxHeight = 260
+  const maxWidth = 560
+  const maxHeight = 220
   const ratio = Math.min(1, maxWidth / image.width, maxHeight / image.height)
   const canvas = document.createElement('canvas')
   canvas.width = Math.max(1, Math.floor(image.width * ratio))
@@ -51,7 +51,16 @@ const compressSignatureDataUrl = async (dataUrl) => {
   context.fillStyle = '#ffffff'
   context.fillRect(0, 0, canvas.width, canvas.height)
   context.drawImage(image, 0, 0, canvas.width, canvas.height)
-  return canvas.toDataURL('image/jpeg', 0.78)
+
+  const qualities = [0.72, 0.62, 0.52, 0.44]
+  for (const quality of qualities) {
+    const output = canvas.toDataURL('image/jpeg', quality)
+    if (output.length <= MAX_SIGNATURE_DATA_URL_LENGTH) {
+      return output
+    }
+  }
+
+  return canvas.toDataURL('image/jpeg', 0.4)
 }
 
 const isSupportedImageType = (file) => {
@@ -208,6 +217,11 @@ function SignatureModal({ open, onClose, supporters, onSuccess }) {
 
     try {
       const optimizedSignature = await compressSignatureDataUrl(signatureDataUrl)
+
+      if (!optimizedSignature || optimizedSignature.length > MAX_SIGNATURE_DATA_URL_LENGTH) {
+        setError('Signature image is too large. Please upload a smaller/cropped image.')
+        return
+      }
 
       const newSupporter = await submitSupporter({
         name: fullName,
